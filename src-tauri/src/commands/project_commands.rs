@@ -6,10 +6,7 @@ pub fn create_project_folder(
     location: String,
     project_name: String,
 ) -> Result<String, String> {
-    project_service::create_project_folder(
-        location,
-        project_name,
-    )
+    project_service::create_project_folder(location, project_name)
 }
 
 #[tauri::command]
@@ -29,9 +26,7 @@ pub fn save_project_metadata(
 pub fn load_project(
     project_path: String,
 ) -> Result<PlantUmlAnalysis, String> {
-    project_service::load_project(
-        project_path,
-    )
+    project_service::load_project(project_path)
 }
 
 #[tauri::command]
@@ -39,8 +34,5 @@ pub fn update_project_name(
     project_path: String,
     new_name: String,
 ) -> Result<String, String> {
-    project_service::update_project_name(
-        project_path,
-        new_name,
-    )
+    project_service::update_project_name(project_path, new_name)
 }

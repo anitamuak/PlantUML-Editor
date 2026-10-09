@@ -1,14 +1,10 @@
-
 import { useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-
 import HomePage from './pages/HomePage'
 import NewProjectPage from './pages/NewProjectPage'
 import ProjectPage from './pages/ProjectPage'
-
 import { loadProject } from './services/projectService'
 import type { PlantUmlAnalysis } from './models/PlantUml'
-
 import './App.css'
 
 type AppScreen = 'home' | 'new-project' | 'project'

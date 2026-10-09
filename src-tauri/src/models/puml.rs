@@ -41,28 +41,17 @@ pub struct PlantUmlConstructor {
 pub struct PlantUmlEntity {
     pub name: String,
     pub category: String,
-
     pub stereotype: Option<String>,
-
     pub visibility: Option<String>,
-
     pub is_abstract: bool,
     pub is_sealed: bool,
-
     pub attributes: Vec<PlantUmlAttribute>,
-
     pub methods: Vec<PlantUmlMethod>,
-
     pub constructors: Vec<PlantUmlConstructor>,
-
     pub enum_values: Vec<String>,
-
     pub record_components: Vec<PlantUmlAttribute>,
-
     pub extends: Option<String>,
-
     pub implements: Vec<String>,
-
     pub uses: Vec<String>,
 }
 
@@ -71,26 +60,18 @@ pub struct PlantUmlEntity {
 pub struct PlantUmlRelationship {
     pub source: String,
     pub target: String,
-
     #[serde(rename = "type")]
     pub relationship_type: String,
-
     pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct PlantUmlAnalysis {
     pub classes: Vec<PlantUmlEntity>,
-
     pub enums: Vec<PlantUmlEntity>,
-
     pub records: Vec<PlantUmlEntity>,
-
     pub sealed: Vec<PlantUmlEntity>,
-
     pub abstract_classes: Vec<PlantUmlEntity>,
-
     pub interfaces: Vec<PlantUmlEntity>,
-
     pub relationships: Vec<PlantUmlRelationship>,
 }

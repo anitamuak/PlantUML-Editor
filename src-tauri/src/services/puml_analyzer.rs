@@ -3,9 +3,6 @@ use crate::models::puml::{
     PlantUmlAttribute,
     PlantUmlEntity,
 };
-/* =========================================================
-   ANALIZADOR PRINCIPAL
-   ========================================================= */
 pub fn analyze_puml_content(
     content: &str,
 ) -> PlantUmlAnalysis {
@@ -19,64 +16,22 @@ pub fn analyze_puml_content(
             interfaces: Vec::new(),
             relationships: Vec::new(),
         };
-    /*
-     * Entidad que actualmente tiene un bloque abierto.
-     *
-     * Ejemplo:
-     *
-     * record Usuario {
-     *     id : Long
-     *     nombre : String
-     * }
-     */
     let mut current_entity:
         Option<PlantUmlEntity> = None;
-    /*
-     * Nivel de llaves.
-     *
-     * Sirve para saber cuándo termina:
-     *
-     * class X {
-     *
-     * }
-     */
     let mut brace_depth: i32 = 0;
-    /*
-     * Algunas declaraciones PlantUML pueden
-     * estar divididas en varias líneas.
-     *
-     * Guardamos temporalmente el texto.
-     */
     let mut pending_declaration =
         String::new();
     for raw_line in content.lines() {
         let line =
             raw_line.trim();
-        /*
-         * -----------------------------------------------------
-         * IGNORAR LÍNEAS VACÍAS
-         * -----------------------------------------------------
-         */
         if line.is_empty() {
             continue;
         }
-        /*
-         * -----------------------------------------------------
-         * IGNORAR COMENTARIOS
-         * -----------------------------------------------------
-         */
         if line.starts_with("'")
             || line.starts_with("//")
         {
             continue;
         }
-        /*
-         * -----------------------------------------------------
-         * @ENDUML
-         * -----------------------------------------------------
-         *
-         * Antes de terminar, guardamos la entidad abierta.
-         */
         if line.eq_ignore_ascii_case("@enduml") {
             if let Some(entity) =
                 current_entity.take()
@@ -88,21 +43,8 @@ pub fn analyze_puml_content(
             }
             break;
         }
-        /*
-         * -----------------------------------------------------
-         * SI ESTAMOS DENTRO DE UNA ENTIDAD
-         * -----------------------------------------------------
-         */
         if current_entity.is_some() {
-            /*
-             * Primero intentamos detectar
-             * el cierre del bloque.
-             */
             if line.starts_with('}') {
-                /*
-                 * Procesamos cualquier información
-                 * que esté antes del cierre.
-                 */
                 let content_line =
                     line.trim_start_matches('}')
                         .trim();
@@ -115,10 +57,6 @@ pub fn analyze_puml_content(
                     );
                 }
                 brace_depth -= 1;
-                /*
-                 * Si llegamos al nivel cero,
-                 * terminó la entidad.
-                 */
                 if brace_depth <= 0 {
                     if let Some(entity) =
                         current_entity.take()
@@ -132,44 +70,22 @@ pub fn analyze_puml_content(
                 }
                 continue;
             }
-            /*
-             * Si todavía estamos dentro
-             * del cuerpo, analizar miembro.
-             */
             parse_entity_member(
                 current_entity
                     .as_mut()
                     .unwrap(),
                 line,
             );
-            /*
-             * Contar llaves adicionales.
-             */
             brace_depth +=
                 count_open_braces(line);
             brace_depth -=
                 count_close_braces(line);
             continue;
         }
-        /*
-         * -----------------------------------------------------
-         * DECLARACIONES MULTILÍNEA
-         * -----------------------------------------------------
-         *
-         * Ejemplo:
-         *
-         * record Usuario(
-         *     Long id,
-         *     String nombre
-         * )
-         */
         if !pending_declaration.is_empty() {
             pending_declaration.push(' ');
             pending_declaration
                 .push_str(line);
-            /*
-             * Esperamos cerrar paréntesis.
-             */
             if pending_declaration
                 .contains(')')
             {
@@ -193,17 +109,7 @@ pub fn analyze_puml_content(
             }
             continue;
         }
-        /*
-         * -----------------------------------------------------
-         * DETECTAR DECLARACIÓN
-         * -----------------------------------------------------
-         */
         if is_entity_declaration(line) {
-            /*
-             * Si parece una declaración
-             * pero abre un paréntesis y
-             * todavía no terminó, guardarla.
-             */
             if line.contains('(')
                 && !line.contains(')')
             {
@@ -219,10 +125,6 @@ pub fn analyze_puml_content(
                     line,
                 )
             {
-                /*
-                 * Si la declaración abre un bloque,
-                 * debemos mantenerla abierta.
-                 */
                 if line.contains('{') {
                     brace_depth =
                         count_open_braces(
@@ -232,10 +134,6 @@ pub fn analyze_puml_content(
                         count_close_braces(
                             line,
                         );
-                    /*
-                     * Eliminar todo lo que está
-                     * después de la primera llave.
-                     */
                     entity.name =
                         clean_entity_name(
                             &entity.name,
@@ -243,15 +141,6 @@ pub fn analyze_puml_content(
                     current_entity =
                         Some(entity);
                 } else {
-                    /*
-                     * Declaración de una sola línea.
-                     *
-                     * Ejemplo:
-                     *
-                     * class Persona
-                     *
-                     * record Usuario(Long id)
-                     */
                     add_entity(
                         &mut analysis,
                         entity,
@@ -261,11 +150,6 @@ pub fn analyze_puml_content(
             continue;
         }
     }
-    /*
-     * Si el archivo terminó sin } pero
-     * todavía existe una entidad abierta,
-     * no perderla.
-     */
     if let Some(entity) =
         current_entity.take()
     {
@@ -276,9 +160,6 @@ pub fn analyze_puml_content(
     }
     analysis
 }
-/* =========================================================
-   AGREGAR ENTIDAD A SU CATEGORÍA
-   ========================================================= */
 fn add_entity(
     analysis: &mut PlantUmlAnalysis,
     entity: PlantUmlEntity,
@@ -310,9 +191,6 @@ fn add_entity(
         _ => {}
     }
 }
-/* =========================================================
-   DETECTAR SI ES DECLARACIÓN
-   ========================================================= */
 fn is_entity_declaration(
     line: &str,
 ) -> bool {
@@ -325,9 +203,6 @@ fn is_entity_declaration(
         || lower.starts_with("interface ")
         || lower.starts_with("enum ")
 }
-/* =========================================================
-   PARSEAR DECLARACIÓN
-   ========================================================= */
 fn parse_entity_declaration(
     line: &str,
 ) -> Option<(PlantUmlEntity, String)> {
@@ -336,31 +211,14 @@ fn parse_entity_declaration(
     if text.is_empty() {
         return None;
     }
-    /*
-     * No analizar comandos PlantUML.
-     */
     if text.starts_with('@') {
         return None;
     }
-    /*
-     * No analizar comentarios.
-     */
     if text.starts_with("'")
         || text.starts_with("//")
     {
         return None;
     }
-    /*
-     * -----------------------------------------------------
-     * QUITAR CUERPO
-     *
-     * class Persona {
-     *
-     * queda como:
-     *
-     * class Persona
-     * -----------------------------------------------------
-     */
     if let Some(position) =
         text.find('{')
     {
@@ -373,11 +231,6 @@ fn parse_entity_declaration(
     }
     let lower =
         text.to_lowercase();
-    /*
-     * -----------------------------------------------------
-     * DETERMINAR CATEGORÍA
-     * -----------------------------------------------------
-     */
     let (
         mut category,
         entity_type,
@@ -447,11 +300,6 @@ fn parse_entity_declaration(
         } else {
             return None;
         };
-    /*
-     * -----------------------------------------------------
-     * KEYWORD
-     * -----------------------------------------------------
-     */
     let keyword =
         if is_abstract {
             "abstract class"
@@ -467,20 +315,8 @@ fn parse_entity_declaration(
     if remainder.is_empty() {
         return None;
     }
-    /*
-     * -----------------------------------------------------
-     * ESTEREOTIPO
-     * -----------------------------------------------------
-     */
     let stereotype =
         extract_stereotype(text);
-    /*
-     * También soportamos:
-     *
-     * class Usuario <<record>>
-     *
-     * y lo clasificamos como RECORD.
-     */
     let is_record_stereotype =
         stereotype
             .as_deref()
@@ -496,22 +332,9 @@ fn parse_entity_declaration(
     {
         category = "RECORD";
     }
-    /*
-     * -----------------------------------------------------
-     * NOMBRE
-     * -----------------------------------------------------
-     */
     let mut record_components =
         Vec::new();
     let name;
-    /*
-     * Record:
-     *
-     * record Usuario(
-     *     Long id,
-     *     String nombre
-     * )
-     */
     if entity_type == "record"
         && remainder.contains('(')
     {
@@ -559,11 +382,6 @@ fn parse_entity_declaration(
     if name.is_empty() {
         return None;
     }
-    /*
-     * -----------------------------------------------------
-     * RELACIONES
-     * -----------------------------------------------------
-     */
     let extends =
         extract_relation_target(
             text,
@@ -571,11 +389,6 @@ fn parse_entity_declaration(
         );
     let implements =
         extract_implements(text);
-    /*
-     * -----------------------------------------------------
-     * CREAR ENTIDAD
-     * -----------------------------------------------------
-     */
     let entity =
         PlantUmlEntity {
             name,
@@ -605,24 +418,12 @@ fn parse_entity_declaration(
         category.to_string(),
     ))
 }
-/* =========================================================
-   PARSEAR COMPONENTES DE RECORD
-   ========================================================= */
 fn parse_record_components(
     text: &str,
 ) -> Vec<PlantUmlAttribute> {
     if text.trim().is_empty() {
         return Vec::new();
     }
-    /*
-     * Dividir por coma.
-     *
-     * Ejemplo:
-     *
-     * Long id,
-     * String nombre,
-     * String correo
-     */
     text.split(',')
         .filter_map(
             |component| {
@@ -631,11 +432,6 @@ fn parse_record_components(
                 if component.is_empty() {
                     return None;
                 }
-                /*
-                 * Formato:
-                 *
-                 * id : Long
-                 */
                 if let Some(position) =
                     component.find(':')
                 {
@@ -665,13 +461,6 @@ fn parse_record_components(
                         }
                     );
                 }
-                /*
-                 * Formato:
-                 *
-                 * Long id
-                 *
-                 * String nombre
-                 */
                 let parts:
                     Vec<&str> =
                     component
@@ -700,11 +489,6 @@ fn parse_record_components(
                         }
                     );
                 }
-                /*
-                 * Si no podemos determinar
-                 * el tipo, conservamos el
-                 * nombre.
-                 */
                 Some(
                     PlantUmlAttribute {
                         name:
@@ -724,9 +508,6 @@ fn parse_record_components(
         )
         .collect()
 }
-/* =========================================================
-   PROCESAR MIEMBRO DE ENTIDAD
-   ========================================================= */
 fn parse_entity_member(
     entity: &mut PlantUmlEntity,
     line: &str,
@@ -736,25 +517,14 @@ fn parse_entity_member(
     if text.is_empty() {
         return;
     }
-    /*
-     * Ignorar llaves.
-     */
     if text == "{"
         || text == "}"
     {
         return;
     }
-    /*
-     * Ignorar comandos.
-     */
     if text.starts_with('@') {
         return;
     }
-    /*
-     * -----------------------------------------------------
-     * ENUM
-     * -----------------------------------------------------
-     */
     if entity.category == "ENUMS" {
         parse_enum_member(
             entity,
@@ -762,22 +532,7 @@ fn parse_entity_member(
         );
         return;
     }
-    /*
-     * -----------------------------------------------------
-     * RECORD
-     * -----------------------------------------------------
-     *
-     * Un record puede tener:
-     *
-     * id : Long
-     * nombre : String
-     *
-     * dentro del cuerpo.
-     */
     if entity.category == "RECORD" {
-        /*
-         * Métodos.
-         */
         if looks_like_method(text) {
             if let Some(method) =
                 parse_method(text)
@@ -788,9 +543,6 @@ fn parse_entity_member(
             }
             return;
         }
-        /*
-         * Constructor.
-         */
         if looks_like_constructor(
             text,
             &entity.name,
@@ -803,9 +555,6 @@ fn parse_entity_member(
             }
             return;
         }
-        /*
-         * Componente / atributo.
-         */
         if let Some(attribute) =
             parse_attribute(text)
         {
@@ -816,11 +565,6 @@ fn parse_entity_member(
         }
         return;
     }
-    /*
-     * -----------------------------------------------------
-     * CLASES / INTERFACES / ABSTRACTAS / SEALED
-     * -----------------------------------------------------
-     */
     if looks_like_method(text) {
         if let Some(method) =
             parse_method(text)
@@ -852,9 +596,6 @@ fn parse_entity_member(
         return;
     }
 }
-/* =========================================================
-   ENUM MEMBER
-   ========================================================= */
 fn parse_enum_member(
     entity: &mut PlantUmlEntity,
     line: &str,
@@ -864,10 +605,6 @@ fn parse_enum_member(
     if text.is_empty() {
         return;
     }
-    /*
-     * Si tiene paréntesis puede ser
-     * un método.
-     */
     if looks_like_method(text) {
         if let Some(method) =
             parse_method(text)
@@ -878,10 +615,6 @@ fn parse_enum_member(
         }
         return;
     }
-    /*
-     * Si tiene ":" probablemente
-     * sea atributo/método.
-     */
     if text.contains(':') {
         if let Some(attribute) =
             parse_attribute(text)
@@ -892,9 +625,6 @@ fn parse_enum_member(
         }
         return;
     }
-    /*
-     * Valor del enum.
-     */
     let clean =
         text
             .trim_end_matches(',')
@@ -907,9 +637,6 @@ fn parse_enum_member(
             .push(clean.to_string());
     }
 }
-/* =========================================================
-   ATRIBUTO
-   ========================================================= */
 fn parse_attribute(
     line: &str,
 ) -> Option<PlantUmlAttribute> {
@@ -918,9 +645,6 @@ fn parse_attribute(
     if text.is_empty() {
         return None;
     }
-    /*
-     * Ignorar relaciones.
-     */
     if text.contains("--")
         || text.contains("..")
         || text.contains("->")
@@ -930,10 +654,6 @@ fn parse_attribute(
     {
         return None;
     }
-    /*
-     * Necesitamos ":" para considerar
-     * que es un atributo.
-     */
     let position =
         text.find(':')?;
     let left =
@@ -947,9 +667,6 @@ fn parse_attribute(
     {
         return None;
     }
-    /*
-     * Visibilidad.
-     */
     let mut visibility =
         None;
     let mut name =
@@ -974,21 +691,12 @@ fn parse_attribute(
             _ => {}
         }
     }
-    /*
-     * Detectar static.
-     */
     let is_static =
         name.contains("{static}")
         || right.contains("{static}");
-    /*
-     * Detectar final.
-     */
     let is_final =
         name.contains("{final}")
         || right.contains("{final}");
-    /*
-     * Limpiar modificadores PlantUML.
-     */
     name =
         name
             .replace(
@@ -1026,9 +734,6 @@ fn parse_attribute(
         }
     )
 }
-/* =========================================================
-   MÉTODO
-   ========================================================= */
 fn parse_method(
     line: &str,
 ) -> Option<crate::models::puml::PlantUmlMethod>
@@ -1110,9 +815,6 @@ fn parse_method(
         }
     )
 }
-/* =========================================================
-   CONSTRUCTOR
-   ========================================================= */
 fn parse_constructor(
     line: &str,
 ) -> Option<crate::models::puml::PlantUmlConstructor>
@@ -1169,9 +871,6 @@ fn parse_constructor(
         }
     )
 }
-/* =========================================================
-   PARÁMETROS
-   ========================================================= */
 fn parse_parameters(
     text: &str,
 ) -> Vec<crate::models::puml::PlantUmlParameter>
@@ -1240,18 +939,12 @@ fn parse_parameters(
         )
         .collect()
 }
-/* =========================================================
-   ¿ES MÉTODO?
-   ========================================================= */
 fn looks_like_method(
     line: &str,
 ) -> bool {
     line.contains('(')
         && line.contains(')')
 }
-/* =========================================================
-   ¿ES CONSTRUCTOR?
-   ========================================================= */
 fn looks_like_constructor(
     line: &str,
     entity_name: &str,
@@ -1268,9 +961,6 @@ fn looks_like_constructor(
             .trim();
     name == entity_name
 }
-/* =========================================================
-   ESTEREOTIPO
-   ========================================================= */
 fn extract_stereotype(
     text: &str,
 ) -> Option<String> {
@@ -1291,9 +981,6 @@ fn extract_stereotype(
         )
     }
 }
-/* =========================================================
-   EXTENDS
-   ========================================================= */
 fn extract_relation_target(
     text: &str,
     keyword: &str,
@@ -1323,9 +1010,6 @@ fn extract_relation_target(
         )
     }
 }
-/* =========================================================
-   IMPLEMENTS
-   ========================================================= */
 fn extract_implements(
     text: &str,
 ) -> Vec<String> {
@@ -1357,9 +1041,6 @@ fn extract_implements(
         .filter(|item| !item.is_empty())
         .collect()
 }
-/* =========================================================
-   LIMPIAR NOMBRE
-   ========================================================= */
 fn clean_entity_name(
     name: &str,
 ) -> String {
@@ -1373,17 +1054,11 @@ fn clean_entity_name(
         .trim()
         .to_string()
 }
-/* =========================================================
-   LLAVES ABIERTAS
-   ========================================================= */
 fn count_open_braces(
     text: &str,
 ) -> i32 {
     text.matches('{').count() as i32
 }
-/* =========================================================
-   LLAVES CERRADAS
-   ========================================================= */
 fn count_close_braces(
     text: &str,
 ) -> i32 {
