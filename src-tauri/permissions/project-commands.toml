@@ -1,0 +1,14 @@
+"$schema" = "../gen/schemas/schema.json"
+
+[[permission]]
+identifier = "project-commands"
+description = "Allows the PlantUML Editor application commands."
+
+commands.allow = [
+    "create_project_folder",
+    "save_project_metadata",
+    "load_project",
+    "update_project_name",
+    "create_puml_file",
+    "import_puml_file"
+]
